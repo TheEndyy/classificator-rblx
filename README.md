@@ -1,5 +1,6 @@
 # Classificator - New Roblox OOP posibilities
 ==========================================================
+
 Classificator is an OOP based module, providing similar experience to Python's OOP. Classificator includes classes, subclasses, objects and has next features:
 - Simple process of defining classes
 - Inheritance and manual initialization of super classes
