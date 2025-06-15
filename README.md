@@ -4,4 +4,5 @@
   - Opportunity to define custom initializers and metamethods
   - Using proxy tables to bypass __newindex restrictions
 
+===================
 # How does it work?
