@@ -1,4 +1,4 @@
-# Classificator - New Roblox OOP posibilities
+# Classificator - New Roblox OOP possibilities
 ==========================================================
 
 To be overwritten
