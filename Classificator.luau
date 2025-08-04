@@ -15,7 +15,6 @@ export type Class = {
 	-- Core properties
 	__dict__: {[string]: any},
 	__clsname__: string,
-	__class__: Class,
 	-- a
 	__issubclass__: boolean,
 	__isclassinherited__: boolean,
@@ -25,7 +24,7 @@ export type Class = {
 	__init__: (self: Object, ...any) -> (),
 	__init_subclass__: (self: Class, ...any) -> (),
 	__call__: (self: Class, ...any) -> any,
-	__tostring: (self: Class) -> string,
+	__str__: (self: Class) -> string,
 
 	-- Operator overloads
 	__add__: (self: Class | Object, value: any) -> any,
@@ -66,7 +65,7 @@ export type Object = {
 
 	-- Magic methods
 	__call__: (self: Class | Object, ...any) -> any,
-	__tostring: (self: Class | Object) -> string,
+	__str__: (self: Class | Object) -> string,
 
 	-- Operator overloads
 	__add__: (self: Class | Object, value: any) -> any,
@@ -286,7 +285,8 @@ local defaultMethods = nil
 
 local function g(class, index)
 	local method = defaultMethods[index]
-	local value = class.__dict__[index]
+	local value = class.__dict__[index] 
+	
 	if value ~= nil then 
 		return value
 	elseif class.__issubclass__ then
@@ -326,6 +326,7 @@ local function getprot(cls, index)
 	local value = ClassProtected[cls][index]
 	if value ~= nil then
 		return value
+		
 	elseif cls.__issubclass__ then
 		local super = ClassSuperiors[cls]
 		if super and super ~= BaseClass then
@@ -1149,6 +1150,8 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 	clsname = tostring(clsname)
 	if Classes[clsname] then error(`Class with name {clsname} already exists.`, 3) return end
 	local checked = {}
+	local isclassinherited = nil
+	local issubclass = nil
 	if super then
 		if type(super) == "table" and not rawget(super, "__class__") then -- checking if all items are classes
 			for i, k in pairs(super) do
@@ -1159,21 +1162,29 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 					error("Provided same class twice", 3) return
 				end
 				checked[k] = true
+				if rawequal(k, BaseClass) then
+					isclassinherited = true
+				else
+					issubclass = true
+				end
 			end
 		elseif type(super) == "table" and rawget(super, "__class__") then
-			-- nothing here
+			if rawequal(super, BaseClass) then
+				isclassinherited = true
+			else
+				issubclass = true
+			end
 		else
 			error("Super is not a class", 3) return
 		end
 	else
-
+		-- nothing here
 	end
 
 	local InternalScope = nil
 	local isInScope = nil
 	local inPrivateScope = nil
 	local addToScope = nil
-	local issubclass = not (super == BaseClass or table.find(checked, BaseClass)) or not not super
 	local __dict__ = {}
 	local protected = {}
 	local private = {}
@@ -1184,7 +1195,7 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 		__dict__ = __dict__,
 		__clsname__ = clsname,
 		__issubclass__ = issubclass,
-		__isclassinherited__ = super == BaseClass or table.find(checked, BaseClass) or not not super -- if is inherited from baseclass
+		__isclassinherited__ = isclassinherited -- if is directly inherited from baseclass
 	},{
 		__index = function(self, index)
 			--index = tostring(index)
@@ -1239,7 +1250,8 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 				return value
 			end
 			
-			return get(ClassSuperiors[self], index)
+			local super = ClassSuperiors[self]
+			if super then return get(super, index) end
 
 		end,
 		__newindex = function(self, index, value)
@@ -1308,6 +1320,12 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 	ClassProtected[Class] = protected
 	ClassPrivate[Class] = private
 	
+	if super then 
+		ClassSuperiors[Class] = super 
+	elseif clsname ~= "Class" then
+		ClassSuperiors[Class] = BaseClass
+	end	
+	
 	if clsname == "Class" then
 		Class.__getattr__ = defaultMethods.__getattr__
 		Class.__setattr__ = defaultMethods.__setattr__
@@ -1332,12 +1350,6 @@ local function newClass(clsname: string, super: {Class} | Class | nil, body: ((c
 	end
 
 	table.freeze(Class)
-
-	if super then 
-		ClassSuperiors[Class] = super 
-	elseif clsname ~= "Class" then
-		ClassSuperiors[Class] = BaseClass
-	end	
 	
 	InternalScope.finish(newClass)
 	
