@@ -11,6 +11,86 @@ local function getFunction(level: number) -- gets the current function at the gi
 	return fn
 end
 
+export type Class = {
+	-- Core properties
+	__dict__: {[string]: any},
+	__clsname__: string,
+	__class__: Class,
+	-- a
+	__issubclass__: boolean,
+	__isclassinherited__: boolean,
+
+	-- Magic methods
+	__new__: (self: Class, ...any) -> Object,
+	__init__: (self: Object, ...any) -> (),
+	__init_subclass__: (self: Class, ...any) -> (),
+	__call__: (self: Class, ...any) -> any,
+	__tostring: (self: Class) -> string,
+
+	-- Operator overloads
+	__add__: (self: Class | Object, value: any) -> any,
+	__sub__: (self: Class | Object, value: any) -> any,
+	__mul__: (self: Class | Object, value: any) -> any,
+	__div__: (self: Class | Object, value: any) -> any,
+	__idiv__: (self: Class | Object, value: any) -> any,
+	__mod__: (self: Class | Object, value: any) -> any,
+	__pow__: (self: Class | Object, value: any) -> any,
+	__eq__: (self: Class | Object, value: any) -> boolean,
+	__lt__: (self: Class | Object, value: any) -> boolean,
+	__le__: (self: Class | Object, value: any) -> boolean,
+	__len__: (self: Class | Object) -> number,
+	__unm__: (self: Class | Object) -> any,
+
+	-- Attribute access
+	__getattr__: (self: Class | Object, index: string) -> any,
+	__setattr__: (self: Class | Object, index: string, value: any) -> (),
+	__delattr__: (self: Class | Object, index: string) -> (),
+
+	-- Utility methods
+	__lock__: (self: Class | Object, deep: boolean?) -> (),
+}
+
+export type Property = {
+	getter: () -> any,
+	setter: (any) -> any,
+	deleter: () -> any,
+	__clsname__: string,
+	__class__: Class,
+	__dict__: {[string]: any}
+}
+
+export type Object = {
+	-- Core properties
+	__dict__: {[string]: any},
+	__class__: Class,
+
+	-- Magic methods
+	__call__: (self: Class | Object, ...any) -> any,
+	__tostring: (self: Class | Object) -> string,
+
+	-- Operator overloads
+	__add__: (self: Class | Object, value: any) -> any,
+	__sub__: (self: Class | Object, value: any) -> any,
+	__mul__: (self: Class | Object, value: any) -> any,
+	__div__: (self: Class | Object, value: any) -> any,
+	__idiv__: (self: Class | Object, value: any) -> any,
+	__mod__: (self: Class | Object, value: any) -> any,
+	__pow__: (self: Class | Object, value: any) -> any,
+	__eq__: (self: Class | Object, value: any) -> boolean,
+	__lt__: (self: Class | Object, value: any) -> boolean,
+	__le__: (self: Class | Object, value: any) -> boolean,
+	__len__: (self: Class | Object) -> number,
+	__unm__: (self: Class | Object) -> any,
+
+	-- Attribute access
+	__getattr__: (self: Object, index: string) -> any,
+	__setattr__: (self: Object, index: string, value: any) -> (),
+	__delattr__: (self: Object, index: string) -> (),
+
+	-- Utility methods
+	lock: (self: Object, deep: boolean?) -> ()
+}
+
 -- 	 Private DON'T TOUCH!!!
 local Classes = {} -- All classes created within this module
 local ClassProtected = {} -- key: Class, value: table of protected properties
@@ -57,9 +137,9 @@ end
 
 -- class structured metatable without inheritance, encapsulation and defined methods/metamethods. For internal use only
 local function featurelessClass<Super>(ClassName: string)
-	if type(ClassName) ~= "string" then error(`ClassName must be a string. {type(ClassName)} provided instead.`) end
-	if not ClassName then error(`ClassName can't be omitted.`) end
-	if Classes[ClassName] then error(`Class with name {ClassName} already exists.`) end
+	if type(ClassName) ~= "string" then error(`ClassName must be a string. {type(ClassName)} provided instead.`, 2) end
+	if not ClassName then error(`ClassName can't be omitted.`, 2) end
+	if Classes[ClassName] then error(`Class with name {ClassName} already exists.`, 2) end
 
 	local Class = setmetatable({
 		__dict__ = {},
@@ -111,17 +191,6 @@ property = setmetatable(property, {
 table.freeze(property)
 table.freeze(property.__dict__)
 
-export type Property = {
-	getter: () -> (),
-	setter: () -> (),
-	deleter: () -> (),
-	__clsname__: string,
-	__class__: typeof(property),
-	__dict__: {}
-}
-
-
-
 local function any(class, tbl)
 	if not tbl then return false end
 	if rawget(tbl, "__class__") then
@@ -145,14 +214,14 @@ function Classificator.isinstance(object: Class, class: Class|{Class})
 	if not (typeof(object) == "table" and Classificator.IsClass(rawget(object, "__class__"))) then return false end
 	if type(class) == "string" then
 		class = Classes[class]
-		if not class then error("Invalid class") return end
+		if not class then error("Invalid class", 2) return end
 	end
 	local objclass = rawget(object, "__class__")
 
 	if type(class) == "table" and not rawget(class, "__class__") then
 		for _,v in class do
 			if not (typeof(v) == "table" and rawget(v, "__clsname__")) then
-				error("Not a class") return
+				error("Not a class", 2) return
 			end
 		end
 
@@ -170,7 +239,7 @@ function Classificator.isinstance(object: Class, class: Class|{Class})
 
 		return any(class, ClassSuperiors[objclass])
 	else
-		error("Not a class") return
+		error("Not a class", 2) return
 	end
 end
 
@@ -185,13 +254,13 @@ function Classificator.issubclass(cls: Class, class: Class|{Class})
 	if not Classificator.IsClass(cls) then return false end
 	if type(class) == "string" then
 		class = Classes[class]
-		if not class then error("Invalid class") return end
+		if not class then error("Invalid class", 2) return end
 	end
 
 	if type(class) == "table" and not rawget(class, "__class__") then
 		for _,v in class do
 			if not Classificator.IsClass(v) then
-				error("Not a class") return
+				error("Not a class", 2) return
 			end
 		end
 
@@ -207,7 +276,7 @@ function Classificator.issubclass(cls: Class, class: Class|{Class})
 		end
 		return any(cls, ClassSuperiors[class])
 	else
-		error("Not a class") return
+		error("Not a class", 2) return
 	end
 end
 
@@ -605,10 +674,10 @@ Adds a function to the scope of the given Class or Object. Only works if you're 
 Classificator.addToScope = function(tbl, fn, IntScope)
 	local IntScope = IntScope or rawget(ObjectIntScopes, tbl) or rawget(ClassIntScopes, tbl)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
 	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
-		error("not in class scope")
+		error("not in class scope", 2)
 	end
 	local isclass = rawget(tbl, "__clsname__")
 	local start = IntScope.start
@@ -669,10 +738,10 @@ Classificator.Wait = function(self: Class, t: number, fn: () -> ())
 	end
 	local IntScope = rawget(ObjectIntScopes, self) or rawget(ClassIntScopes, self)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
-	if not IntScope.isInScope() then
-		error("not in class scope")
+	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
+		error("not in class scope", 2)
 	end
 	
 	IntScope.pause(fn)
@@ -695,10 +764,10 @@ If a function is given, it is immediately spawned as a task. If a thread is give
 Classificator.Spawn = function(self: Class, fnOrThr, ...)
 	local IntScope = rawget(ObjectIntScopes, self) or rawget(ClassIntScopes, self)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
-	if not IntScope.isInScope() then
-		error("not in class scope")
+	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
+		error("not in class scope", 2)
 	end
 	
 	local valuetype = type(fnOrThr)
@@ -727,10 +796,10 @@ Classificator's analog of task.delay.
 Classificator.Delay = function(self: Class, duration: number, fnOrThr, ...)
 	local IntScope = rawget(ObjectIntScopes, self) or rawget(ClassIntScopes, self)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
-	if not IntScope.isInScope() then
-		error("not in class scope")
+	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
+		error("not in class scope", 2)
 	end
 	
 	local valuetype = type(fnOrThr)
@@ -760,10 +829,10 @@ Unlike Classificator.Spawn, Classificator.Defer resumes the given function or th
 Classificator.Defer = function(self: Class, fnOrThr, ...)
 	local IntScope = rawget(ObjectIntScopes, self) or rawget(ClassIntScopes, self)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
-	if not IntScope.isInScope() then
-		error("not in class scope")
+	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
+		error("not in class scope", 2)
 	end
 	
 	local valuetype = type(fnOrThr)
@@ -786,15 +855,15 @@ Classificator's analog of task.cancel.
 ]]
 Classificator.Cancel = function(self: Class, thread: thread)
 	if type(thread) ~= "thread" then
-		error("thread must be thread type") return
+		error("thread must be thread type", 2) return
 	end
 	
 	local IntScope = rawget(ObjectIntScopes, self) or rawget(ClassIntScopes, self)
 	if not IntScope then 
-		error("couldn't find internal scope for given table") return 
+		error("couldn't find internal scope for given table", 2) return 
 	end
-	if not IntScope.isInScope() then
-		error("not in class scope")
+	if not (IntScope.runningCount > 0 or IntScope.isInScope()) then
+		error("not in class scope", 2)
 	end
 	
 	IntScope.closeTask(thread)
@@ -814,7 +883,7 @@ BaseClass methods, such as __new__, __init__, etc.
 local __new__
 __new__ = function(self, ...): Object
 	local cls = self
-	if not Classificator.IsClass(cls) then error(`self must be a class`) return end
+	if not Classificator.IsClass(cls) then error(`self must be a class`, 2) return end
 	local object
 	local InternalScope = nil
 	local isInScope = nil
@@ -848,7 +917,7 @@ __new__ = function(self, ...): Object
 						end
 						return getPrivate(cls, index)
 					else
-						error(`{self}: Tried getting a private attribute {index} outside Class scope`) return
+						error(`{self}: Tried getting a private attribute {index} outside Class scope`, 2) return
 					end
 				end
 			end
@@ -864,7 +933,7 @@ __new__ = function(self, ...): Object
 						end
 						return getProtected(cls, index)
 					else
-						error(`{self}: Tried getting a protected attribute {index} outside Class/Subclass scope`) return
+						error(`{self}: Tried getting a protected attribute {index} outside Class/Subclass scope`, 2) return
 					end
 				end
 			end
@@ -895,7 +964,7 @@ __new__ = function(self, ...): Object
 						rawset(private, index, value)
 						return
 					else
-						error(`{self}: Tried setting a private attribute {index} outside Class scope`) return
+						error(`{self}: Tried setting a private attribute {index} outside Class scope`, 2) return
 					end
 				end
 			end
@@ -908,14 +977,14 @@ __new__ = function(self, ...): Object
 						rawset(protected, index, value)
 						return
 					else
-						error(`{self}: Tried setting a protected attribute {index} outside Class/Subclass scope`) return
+						error(`{self}: Tried setting a protected attribute {index} outside Class/Subclass scope`, 2) return
 					end
 				end
 			end
 			
 			if type(value) == "table" and rawequal(value.__class__, property) then
 				if not inPrivateScope() then
-					error(`{self}: Tried setting a property {index} outside Class scope`) return
+					error(`{self}: Tried setting a property {index} outside Class scope`, 2) return
 				end
 			end
 
@@ -996,19 +1065,19 @@ __new__ = function(self, ...): Object
 end
 defaultMethods = {
 	__getattr__ = function(self, index)
-		if type(self) ~= "table" then error("must a table") return end
+		if type(self) ~= "table" then error("must a table", 2) return end
 		local dict = self.__dict__
 		if not dict then return nil end
 		return dict[index]
 	end,
 	__setattr__ = function(self, index, value)
-		if type(self) ~= "table" then error("must a table") return end
+		if type(self) ~= "table" then error("must a table", 2) return end
 		local dict = self.__dict__
 		if not dict then return nil end
 		dict[index] = value
 	end,
 	__delattr__ = function(self, index)
-		if type(self) ~= "table" then error("must a table") return end
+		if type(self) ~= "table" then error("must a table", 2) return end
 		local dict = self.__dict__
 		if not dict then return nil end
 		dict[index] = nil
@@ -1025,7 +1094,7 @@ defaultMethods = {
 	end,
 	__str__ = function(self)
 		local isobject = Classificator.IsObject(self)
-		if not isobject then error(`self must be a class or an object`) return end
+		if not isobject then error(`self must be a class or an object`, 2) return end
 		return `<{self.__class__.__clsname__} object>` 
 	end,
 	__add__ = function(self, value)
@@ -1059,7 +1128,7 @@ defaultMethods = {
 
 	end,
 	__lock__ = function(self, deep: boolean)
-		if not (Classificator.IsObject(self) or Classificator.IsClass(self)) then error(`self must be a class or an object`) return end
+		if not (Classificator.IsObject(self) or Classificator.IsClass(self)) then error(`self must be a class or an object`, 2) return end
 
 		local function deepfreeze(tbl)
 			if not table.isfrozen(tbl) then table.freeze(tbl) end
@@ -1075,27 +1144,26 @@ defaultMethods = {
 --[[
 Class creator function
 ]]
-local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: Class) -> ())?)
+local function newClass(clsname: string, super: {Class} | Class | nil, body: ((cls: Class) -> ())?): Class
+	if not clsname then error(`clsname can't be omitted.`, 3) end
 	clsname = tostring(clsname)
-	if not clsname then error(`clsname can't be omitted.`) end
-	if Classes[clsname] and clsname == "Class" then error("Reserved name") end
-	if Classes[clsname] then error(`Class with name {clsname} already exists.`) return end
+	if Classes[clsname] then error(`Class with name {clsname} already exists.`, 3) return end
 	local checked = {}
 	if super then
 		if type(super) == "table" and not rawget(super, "__class__") then -- checking if all items are classes
 			for i, k in pairs(super) do
 				if not Classificator.IsClass(k) then
-					error("Super is not a class")
+					error("Super is not a class", 3) return
 				end
 				if checked[k] then
-					error("Provided same class twice")
+					error("Provided same class twice", 3) return
 				end
 				checked[k] = true
 			end
 		elseif type(super) == "table" and rawget(super, "__class__") then
 			-- nothing here
 		else
-			error("Super is not a class") return
+			error("Super is not a class", 3) return
 		end
 	else
 
@@ -1116,7 +1184,7 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 		__dict__ = __dict__,
 		__clsname__ = clsname,
 		__issubclass__ = issubclass,
-		__isclassinherited__ = super == BaseClass or table.find(checked, BaseClass) or not super
+		__isclassinherited__ = super == BaseClass or table.find(checked, BaseClass) or not not super -- if is inherited from baseclass
 	},{
 		__index = function(self, index)
 			--index = tostring(index)
@@ -1134,7 +1202,7 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 						end
 						return
 					else
-						error(`{self}: Tried getting a private attribute {index} outside Class scope`) return
+						error(`{self}: Tried getting a private attribute {index} outside Class scope`, 2) return
 					end
 				end
 			end
@@ -1154,7 +1222,7 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 						end
 						return
 					else
-						error(`{self}: Tried getting a protected attribute {index} outside Class/Subclass scope`) return
+						error(`{self}: Tried getting a protected attribute {index} outside Class/Subclass scope`, 2) return
 					end
 				end
 			end
@@ -1190,7 +1258,7 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 						rawset(private, index, value)
 						return
 					else
-						error(`{self}: Tried setting a private attribute {index} outside Class scope`) return
+						error(`{self}: Tried setting a private attribute {index} outside Class scope`, 2) return
 					end
 				end
 			end
@@ -1203,14 +1271,14 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 						rawset(protected, index, value)
 						return
 					else
-						error(`{self}: Tried setting a protected attribute {index} outside Class/Subclass scope`) return
+						error(`{self}: Tried setting a protected attribute {index} outside Class/Subclass scope`, 2) return
 					end
 				end
 			end
 
 			if type(value) == "table" and rawequal(value.__class__, property) then
 				if not inPrivateScope() then
-					error(`{self}: Tried setting a property {index} outside Class scope`) return
+					error(`{self}: Tried setting a property {index} outside Class scope`, 2) return
 				end
 			end
 
@@ -1294,7 +1362,7 @@ local function newClass(clsname: string, super: {Class}|Class|nil, body:((cls: C
 		body = Classificator.addToScope(Class, body)
 		body(Class)
 	end
-
+	
 	return Class
 end
 
@@ -1316,12 +1384,12 @@ Previous rules are applied for setting attributes too, but it's setting instead 
 To create an instance (object) of class, call the class as a function or call Class:__new__(), arguments are optional
 Read the docs for more info...
 ]]
-function Classificator.new<Super>(ClassName: string, super: Super?, body: ((cls: Class) -> ())?): Class
-	return newClass(ClassName, super, body)
+function Classificator.new<Super>(ClassName: string, super: Super?, body: ((cls: Class) -> ())?)
+	local cls = newClass(ClassName, super, body)
+	return cls
 end
 
 BaseClass = Classificator.new("Class", nil)
-export type Class = typeof(BaseClass)
 Classificator.BaseClass = BaseClass
 
 -- Creates new property object with given getter, setter and deleter functions
