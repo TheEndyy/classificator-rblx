@@ -26,7 +26,7 @@ export type Class = {
 	__call__: (self: Class, ...any) -> any,
 	__str__: (self: Class) -> string,
 
-	-- Operator overloads
+	-- Operators
 	__add__: (self: Class | Object, value: any) -> any,
 	__sub__: (self: Class | Object, value: any) -> any,
 	__mul__: (self: Class | Object, value: any) -> any,
@@ -67,7 +67,7 @@ export type Object = {
 	__call__: (self: Class | Object, ...any) -> any,
 	__str__: (self: Class | Object) -> string,
 
-	-- Operator overloads
+	-- Operators
 	__add__: (self: Class | Object, value: any) -> any,
 	__sub__: (self: Class | Object, value: any) -> any,
 	__mul__: (self: Class | Object, value: any) -> any,
